@@ -1,0 +1,4 @@
+{
+    "command": "./gradlew installDebug",
+    "working_directory": "/home/kavia/workspace/code-generation/tic-tac-toe-classic-146452-146480/android_frontend"
+}
