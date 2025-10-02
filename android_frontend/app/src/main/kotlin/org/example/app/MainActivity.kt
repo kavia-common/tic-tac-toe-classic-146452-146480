@@ -8,6 +8,8 @@ import android.widget.Button
 import android.widget.GridLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 
 /**
  * PUBLIC_INTERFACE
@@ -78,9 +80,16 @@ class MainActivity : Activity() {
     }
 
     private fun styleCell(button: Button) {
-        button.setTextColor(ContextCompat.getColor(this, R.color.op_text))
-        button.textSize = 28f
+        // We primarily use icons; keep text invisible to avoid layout shifts
+        button.setTextColor(ContextCompat.getColor(this, android.R.color.transparent))
+        button.textSize = 0f
         button.typeface = Typeface.DEFAULT_BOLD
+        // Ensure content description is set programmatically for accessibility
+        ViewCompat.replaceAccessibilityAction(
+            button,
+            AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_CLICK,
+            getString(R.string.turn_indicator_static),
+        ) { _, _ -> false }
     }
 
     private fun onCellClicked(index: Int, button: Button) {
@@ -94,7 +103,19 @@ class MainActivity : Activity() {
         }
 
         board[row][col] = currentPlayer
-        button.text = currentPlayer.toString()
+        // Set appropriate icon based on player
+        val iconRes = if (currentPlayer == 'X') R.drawable.ic_knight else R.drawable.ic_queen
+        button.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
+        button.setPadding(0, 0, 0, 0)
+        button.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, iconRes)
+        // For better centering, also set background overlay drawable
+        button.setForeground(null)
+        // Accessibility: announce placed piece
+        val cd = if (currentPlayer == 'X')
+            getString(R.string.player_x) + " placed a knight"
+        else
+            getString(R.string.player_o) + " placed a queen"
+        button.contentDescription = cd
         moves++
 
         when (checkGameState()) {
@@ -161,19 +182,23 @@ class MainActivity : Activity() {
         currentPlayer = 'X'
         cellButtons.forEach {
             it.text = ""
+            it.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
             it.isEnabled = true
             it.alpha = 1.0f
-            it.setTextColor(ContextCompat.getColor(this, R.color.op_text))
+            it.setTextColor(ContextCompat.getColor(this, android.R.color.transparent))
             it.background = ContextCompat.getDrawable(this, R.drawable.cell_background)
+            it.contentDescription = getString(R.string.grid_cell)
         }
         updateTurnIndicator()
         updateScore()
     }
 
     private fun highlightCells(indices: IntArray, colorRes: Int) {
+        val colorInt = ContextCompat.getColor(this, colorRes)
         indices.forEach { idx ->
             val btn = cellButtons[idx]
-            btn.setTextColor(ContextCompat.getColor(this, colorRes))
+            btn.background = ContextCompat.getDrawable(this, R.drawable.cell_background)
+            btn.background?.setTint(colorInt and 0x33FFFFFF or (0x33 shl 24)) // subtle tint overlay
         }
         // Dim non-winning cells for subtle emphasis
         cellButtons.forEachIndexed { idx, b ->
